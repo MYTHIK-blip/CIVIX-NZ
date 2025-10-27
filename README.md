@@ -55,9 +55,17 @@ The project currently has a fully functional and robust document ingestion pipel
     *   **Advanced RAG Techniques:** Explore techniques like re-ranking, query expansion, or more sophisticated prompt engineering to improve answer quality.
     *   **Monitoring & Observability:** Implement logging, metrics, and tracing for the API and background processes.
 
-## Phase 6: User Interface (Streamlit)
+## Phase 6: User Interface (Streamlit) - Enhanced
 
-To run the user interface:
+The Streamlit UI has been enhanced with additional features for improved user interaction.
+
+### Features:
+*   **Document Upload:** Upload PDF, DOCX, or TXT files directly via the UI for ingestion into the RAG system.
+*   **Query History:** View a session-based history of past queries, generated answers, and retrieved contextual chunks.
+*   **Configurable Retrieval:** Adjust `top_k` (initial chunks for retrieval) and `rerank_k` (final chunks after re-ranking) using sliders.
+*   **Enhanced Context Display:** Retrieved chunks are displayed with their content and metadata for transparency.
+
+### To run the user interface:
 
 1.  **Ensure FastAPI Backend is Running:** The Streamlit UI communicates with the FastAPI backend. Make sure your `ingestion_service.py` is running. You can start it with:
     ```bash
