@@ -12,3 +12,9 @@ backoff
 httpx
 streamlit
 python-json-logger
+prometheus_client
+opentelemetry-sdk
+opentelemetry-api
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-httpx

@@ -17,6 +17,9 @@ import docx
 from chromadb.utils import embedding_functions
 from sentence_transformers import SentenceTransformer
 
+from src.utils.tracing import tracer
+from src.utils.metrics import INGESTION_DURATION_SECONDS, EMBEDDING_DURATION_SECONDS, CHROMA_QUERY_DURATION_SECONDS
+
 # Logging is configured globally by src.utils.logging_config
 # No need for logging.basicConfig here.
 
@@ -122,14 +125,28 @@ def _cache_embedding(chunk_hash: str, embedding: np.ndarray):
 @backoff.on_exception(backoff.expo, Exception, max_tries=3)
 def _embed_batch(batch_texts: List[str]) -> List[np.ndarray]:
     """Embeds a batch of texts with retry logic."""
-    logging.info(f"Embedding batch of size {len(batch_texts)}...")
-    return embedding_model.encode(batch_texts, convert_to_numpy=True)
+    start_time = time.time()
+    with tracer.start_as_current_span("embed_batch") as span:
+        span.set_attribute("embedding.model_name", EMBED_MODEL)
+        span.set_attribute("embedding.batch_size", len(batch_texts))
+        logging.info(f"Embedding batch of size {len(batch_texts)}...", extra={"model_name": EMBED_MODEL, "batch_size": len(batch_texts)})
+        embeddings = embedding_model.encode(batch_texts, convert_to_numpy=True)
+        duration = time.time() - start_time
+        EMBEDDING_DURATION_SECONDS.labels(model_name=EMBED_MODEL, batch_size=len(batch_texts)).observe(duration)
+        span.set_attribute("embedding.duration_seconds", duration)
+        return embeddings
 
 @backoff.on_exception(backoff.expo, Exception, max_tries=2)
 def _upsert_to_chroma(collection, ids: List[str], embeddings: List[np.ndarray], metadatas: List[Dict], documents: List[str]):
     """Upserts a batch to ChromaDB with retry logic."""
-    logging.info(f"Upserting batch of size {len(ids)} to ChromaDB...")
-    collection.upsert(ids=ids, embeddings=embeddings, metadatas=metadatas, documents=documents)
+    start_time = time.time()
+    with tracer.start_as_current_span("upsert_to_chroma") as span:
+        span.set_attribute("chroma.upsert_count", len(ids))
+        logging.info(f"Upserting batch of size {len(ids)} to ChromaDB...", extra={"upsert_count": len(ids)})
+        collection.upsert(ids=ids, embeddings=embeddings, metadatas=metadatas, documents=documents)
+        duration = time.time() - start_time
+        CHROMA_QUERY_DURATION_SECONDS.observe(duration)
+        span.set_attribute("chroma.upsert_duration_seconds", duration)
 
 def _update_manifest(manifest_data: Dict):
     """Writes updated data to the ingestion manifest."""
@@ -152,7 +169,12 @@ def ingest_document(file_path: str, doc_id: str, chroma_client: Union[chromadb.C
     """
     ingest_run_id = f"run_{uuid.uuid4().hex[:8]}"
     start_time = time.time()
-    logging.info(f"[{ingest_run_id}] Starting ingestion for doc_id: {doc_id} from file: {file_path}")
+    
+    with tracer.start_as_current_span("ingest_document") as span:
+        span.set_attribute("ingestion.doc_id", doc_id)
+        span.set_attribute("ingestion.file_path", file_path)
+        span.set_attribute("ingestion.run_id", ingest_run_id)
+        logging.info(f"[{ingest_run_id}] Starting ingestion for doc_id: {doc_id} from file: {file_path}", extra={"doc_id": doc_id, "file_path": file_path, "ingest_run_id": ingest_run_id})
 
     # Initialize ChromaDB client and collection here
     if chroma_client is None:
@@ -289,7 +311,12 @@ def ingest_document(file_path: str, doc_id: str, chroma_client: Union[chromadb.C
         "elapsed_time_seconds": round(elapsed_time, 2),
         "failed_upserts": len(failed_upsert_hashes)
     }
-    logging.info(f"[{ingest_run_id}] Ingestion finished for doc_id {doc_id}. Report: {report}")
+    logging.info(f"[{ingest_run_id}] Ingestion finished for doc_id {doc_id}. Report: {report}", extra=report)
+    
+    INGESTION_DURATION_SECONDS.labels(doc_id=doc_id, status=report["status"]).observe(elapsed_time)
+    span.set_attribute("ingestion.status", report["status"])
+    span.set_attribute("ingestion.total_chunks", report["total_chunks"])
+    span.set_attribute("ingestion.elapsed_time_seconds", elapsed_time)
     
     return report
 

@@ -78,3 +78,44 @@ To run the user interface:
     streamlit run ui.py
     ```
     This will open the UI in your web browser, typically at `http://localhost:8501`.
+
+## Phase 7: Monitoring & Observability (Metrics & Tracing)
+
+The FastAPI backend is instrumented with Prometheus metrics and OpenTelemetry tracing.
+
+### Running with Metrics and Tracing
+
+1.  **Ensure Dependencies are Installed:**
+    ```bash
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    ```
+
+2.  **Start a Tracing Collector (e.g., Jaeger):**
+    For local development, you can run Jaeger with Docker:
+    ```bash
+    docker run -d --name jaeger \
+      -e COLLECTOR_OTLP_ENABLED=true \
+      -p 16686:16686 \
+      -p 4317:4317 \
+      jaegertracing/all-in-one:latest
+    ```
+    Access Jaeger UI at `http://localhost:16686`.
+
+3.  **Start the FastAPI Backend with Tracing Enabled:**
+    Set the `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable to point to your Jaeger collector (default is `http://localhost:4317`).
+    ```bash
+    source .venv/bin/activate
+    export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317" # Or your collector's OTLP gRPC endpoint
+    uvicorn ingestion_service:app --reload
+    ```
+
+### Viewing Metrics
+
+*   Access Prometheus metrics at `http://localhost:8000/metrics` (assuming your FastAPI app is running on port 8000).
+*   You can then configure Prometheus to scrape this endpoint.
+
+### Viewing Traces
+
+*   After making requests to your FastAPI application (e.g., via the Streamlit UI or directly), traces will be sent to the configured OTLP endpoint.
+*   View traces in your Jaeger UI (e.g., `http://localhost:16686`). Search for service name `compliance-rag-api`.
