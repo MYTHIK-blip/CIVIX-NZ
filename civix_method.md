@@ -45,6 +45,10 @@ This document outlines the core principles, infrastructure design, development m
 *   **Test-Driven Principles:** Comprehensive `pytest` suite ensures reliability and prevents regressions.
 *   **CPU-First Development:** Prioritize CPU-compatible solutions by default, with optional GPU support.
 *   **Documentation-Driven:** Key decisions, progress, and implementation details are logged in `docs/` and summarized in `README.md`.
+*   **Continuous Documentation:** All logs, documentation (including `README.md` and this `civix_method.md` file), and code comments are updated in correspondence to any progress, issues, or resolutions encountered. This includes:
+    *   **Timestamping:** All log entries and significant documentation updates are timestamped for clear historical tracking.
+    *   **Formatting Cadence:** Consistent Markdown formatting is maintained across all documentation.
+    *   **GitHub Cadence:** Documentation updates are committed and pushed regularly, aligning with code changes, ensuring compatibility with GitHub's rendering (e.g., fencing for code blocks, Mermaid diagrams where applicable).
 
 ## 5. GitHub and Versioning
 
