@@ -58,7 +58,10 @@ This document outlines the core principles, infrastructure design, development m
 
 *   **Repository:** Hosted on GitHub (`MYTHIK-blip/CIVIX-NZ`).
 *   **Branching Strategy:** `main` branch for stable, production-ready code. Feature branches for new development.
-*   **Commit Messages:** Follow conventional commits (e.g., `feat:`, `fix:`, `docs:`) with clear, concise descriptions. Emoticons may be used for visual categorization (e.g., ✨ for new features).
+*   **Commit Messages:** Follow conventional commits with a type, scope (optional), and a short description. Use emojis for visual categorization.
+    *   **Format:** `emoji type(scope): message`
+    *   **Example:** `✨ feat: Implemented Phase 10: System Evaluation and Benchmarking`
+    *   **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
 *   **Tagging:** Use lightweight tags (e.g., `v0.1.0-phase8-complete`) to mark significant milestones or release points for easy rollback and version tracking.
 *   **`.gitignore`:** Carefully configured to exclude generated files, environment specifics, and sensitive data.
 

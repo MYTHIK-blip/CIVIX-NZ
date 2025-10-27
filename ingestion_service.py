@@ -66,6 +66,9 @@ async def ingest_file(request: Request, file: UploadFile = File(...)):
     doc_id = "unknown" # Default for logging
 
     try:
+        print(f"Received request URL: {request.url}")
+        print(f"Received request headers: {request.headers}")
+
         if not file.filename:
             status_code = 400
             raise HTTPException(status_code=status_code, detail="No file name provided.")

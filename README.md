@@ -127,3 +127,30 @@ The FastAPI backend is instrumented with Prometheus metrics and OpenTelemetry tr
 
 *   After making requests to your FastAPI application (e.g., via the Streamlit UI or directly), traces will be sent to the configured OTLP endpoint.
 *   View traces in your Jaeger UI (e.g., `http://localhost:16686`). Search for service name `compliance-rag-api`.
+
+## Benchmarking
+
+A benchmark script is available at `scripts/benchmark.py` to evaluate the end-to-end performance of the RAG pipeline.
+
+### Features
+
+*   **Automated Ingestion:** Ingests a test document before running queries.
+*   **Query Evaluation:** Runs a set of predefined queries from `data/evaluation_dataset.json`.
+*   **Metrics:** Calculates and displays the following metrics:
+    *   **Latency:** The time taken to get a response from the query endpoint.
+    *   **Answer Match:** Whether the generated answer contains the "gold" answer.
+    *   **Retrieval Success:** Whether the retrieved document chunks are relevant.
+
+### How to Run
+
+1.  **Ensure the FastAPI backend is running:**
+    ```bash
+    source .venv/bin/activate
+    uvicorn ingestion_service:app --reload
+    ```
+
+2.  **Run the benchmark script:**
+    ```bash
+    source .venv/bin/activate
+    python scripts/benchmark.py
+    ```
