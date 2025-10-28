@@ -58,6 +58,7 @@ async def run_benchmark():
                 rag_response, latency = await query_rag_system(client, query_text)
                 generated_answer = rag_response.get("answer", "")
                 retrieved_chunks = rag_response.get("retrieved_chunks", [])
+                print("RETRIEVED CHUNKS:", retrieved_chunks)
 
                 # Basic evaluation (can be expanded)
                 # For now, just check if gold answer is somewhat contained in generated answer

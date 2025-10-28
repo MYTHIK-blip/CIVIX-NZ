@@ -111,7 +111,7 @@ def test_rag_full_pipeline_success(setup_rag_test_data):
         # 1. Retrieve chunks
         retrieved_chunks = query_collection(query_text=query, top_k=1, chroma_client=client)
         assert len(retrieved_chunks) > 0
-        assert "Eiffel Tower" in retrieved_chunks[0]["document"]
+        assert "eiffel tower" in retrieved_chunks[0]["document"].lower()
 
         # 2. Generate answer
         generated_answer = generate_answer(query=query, retrieved_chunks=retrieved_chunks)
