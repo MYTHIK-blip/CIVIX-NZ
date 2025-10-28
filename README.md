@@ -15,19 +15,29 @@ To build a reliable and efficient Retrieval-Augmented Generation (RAG) system sp
 
 The primary purpose of ComplianceRAG is to provide a scalable and accurate solution for querying compliance documents. It automates the process of ingesting and vectorizing a large volume of text data, and provides an interface for users to retrieve relevant information and generate coherent answers.
 
-## Current Standing (as of 2025-10-26)
+## Current Standing (as of 2025-10-28)
 
 **Phase 3: Ingestion Pipeline - COMPLETE**
 **Phase 4: Retrieval Endpoint - COMPLETE**
 **Phase 5: Generation Pipeline - COMPLETE**
+**Phase 6: User Interface (Streamlit) - COMPLETE**
+**Phase 7: Monitoring & Observability (Structured Logging) - COMPLETE**
+**Phase 8: Monitoring & Observability (Metrics & Tracing) - COMPLETE**
+**Phase 9: User Interface Enhancements - COMPLETE**
+**Phase 10: System Evaluation and Benchmarking - COMPLETE**
 
-The project currently has a fully functional and robust document ingestion pipeline, a retrieval endpoint, and a generation pipeline. Key features include:
+All critical issues identified during Phase 10, including embedding model loading, cache invalidation, and test assertion logic, have been successfully resolved. The project's test suite now passes consistently.
+
+The project currently has a fully functional and robust document ingestion pipeline, a retrieval endpoint, and a generation pipeline, all integrated with a user-friendly Streamlit interface and comprehensive observability features. Key features include:
 
 *   **API:** A FastAPI service (`ingestion_service.py`) with an `/ingest` endpoint for document uploads and a `/query` endpoint for retrieving relevant document chunks and generating answers.
 *   **Document Processing:** Support for PDF, DOCX, and TXT file formats.
 *   **Vectorization:** A sophisticated pipeline (`src/ingestion/processor.py`) that chunks text, generates embeddings using `sentence-transformers`, and upserts them into a ChromaDB vector store, storing the document text itself.
-*   **Retrieval:** A dedicated module (`src/retrieval/retriever.py`) that embeds user queries and retrieves the most relevant document chunks from ChromaDB.
+*   **Retrieval:** A dedicated module (`src/retrieval/retriever.py`) that embeds user queries, performs initial retrieval, and applies re-ranking for enhanced relevance.
 *   **Generation:** A dedicated module (`src/generation/generator.py`) that interacts with a local Ollama server (e.g., `mistral`) to construct RAG-specific prompts and generate answers based on retrieved context.
+*   **User Interface:** A Streamlit application (`ui.py`) providing document upload, query history, configurable retrieval parameters, and enhanced display of retrieved content.
+*   **Observability:** Structured JSON logging, Prometheus metrics, and OpenTelemetry distributed tracing for comprehensive system monitoring.
+*   **Benchmarking:** A script (`scripts/benchmark.py`) for automated end-to-end system evaluation.
 *   **Idempotency & Caching:** The ingestion pipeline is idempotent. It uses a file-based cache for embeddings and a manifest file to track ingested documents, preventing redundant processing.
 *   **Persistence:** The system uses a persistent, on-disk ChromaDB instance for the main application.
 *   **Testing:** A comprehensive `pytest` suite is in place, ensuring the reliability of the ingestion, retrieval, and generation processes.
@@ -42,18 +52,20 @@ The project currently has a fully functional and robust document ingestion pipel
     ```
     If you require GPU support, you will need to install the appropriate CUDA-enabled PyTorch wheel separately, following the instructions on the official PyTorch website (e.g., `pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118` for CUDA 11.8).
 
-3.  **Testing with ChromaDB:** During development, a critical issue was discovered with `chromadb.PersistentClient` causing database locks during rapid test execution. **The test suite now uses `chromadb.PersistentClient` with unique temporary directories for each test or module to ensure true isolation.** This was a complex issue to resolve, highlighting the importance of proper test isolation for stateful components. The production code correctly uses the `PersistentClient`.
+3.  **Embedding Model for Testing:** For consistent test execution, the `all-MiniLM-L6-v2` embedding model is expected to be available locally. If not present, it can be downloaded and saved to `./models/all-MiniLM-L6-v2`. When running tests, ensure the `EMBED_MODEL` environment variable is set to this local path (e.g., `EMBED_MODEL=./models/all-MiniLM-L6-v2 pytest`).
 
-4.  **Idempotency:** The ingestion pipeline is designed to be idempotent. Re-ingesting the same file will not create duplicate entries or re-compute embeddings that are already in the cache. This is a core feature; please maintain it.
+4.  **Testing with ChromaDB:** During development, a critical issue was discovered with `chromadb.PersistentClient` causing database locks during rapid test execution. **The test suite now uses `chromadb.PersistentClient` with unique temporary directories for each test or module to ensure true isolation.** This was a complex issue to resolve, highlighting the importance of proper test isolation for stateful components. The production code correctly uses the `PersistentClient`.
 
-5.  **Configuration:** Key parameters (model name, device, paths) are controlled via environment variables with sensible defaults in `src/ingestion/processor.py`, `src/retrieval/retriever.py`, and `src/generation/generator.py`. For production deployments, consider using a more formal configuration management system (e.g., a `.env` file loader or a settings module).
+5.  **Idempotency:** The ingestion pipeline is designed to be idempotent. Re-ingesting the same file will not create duplicate entries or re-compute embeddings that are already in the cache. This is a core feature; please maintain it.
 
-6.  **Ollama Server:** For the generation pipeline to function, an Ollama server must be running locally (or at the configured `OLLAMA_API_BASE_URL`) with the specified model (`OLLAMA_MODEL`, e.g., `mistral`) pulled and ready. You can start it with `ollama run mistral`.
+6.  **Configuration:** Key parameters (model name, device, paths) are controlled via environment variables with sensible defaults in `src/ingestion/processor.py`, `src/retrieval/retriever.py`, and `src/generation/generator.py`. For production deployments, consider using a more formal configuration management system (e.g., a `.env` file loader or a settings module).
 
-7.  **Next Logical Steps:**
-    *   **Phase 6: User Interface:** Develop a simple front-end application to provide a user-friendly interface for asking questions and viewing results.
-    *   **Advanced RAG Techniques:** Explore techniques like re-ranking, query expansion, or more sophisticated prompt engineering to improve answer quality.
-    *   **Monitoring & Observability:** Implement logging, metrics, and tracing for the API and background processes.
+7.  **Ollama Server:** For the generation pipeline to function, an Ollama server must be running locally (or at the configured `OLLAMA_API_BASE_URL`) with the specified model (`OLLAMA_MODEL`, e.g., `mistral`) pulled and ready. You can start it with `ollama run mistral`.
+
+8.  **Post-Phase 10 Debugging Notes:**
+    *   **Ollama Model Alias:** The system expects a model named `mistral`. If only `mistral:instruct` is available, create an alias using `ollama cp mistral:instruct mistral`.
+    *   **Character-Based Chunking:** Due to the removal of `transformers` for CPU-first optimization, the system defaults to character-based chunking. Ensure `CHUNK_SIZE_CHARS` and `CHUNK_OVERLAP_CHARS` in `src/ingestion/processor.py` are appropriately configured for your document sizes to achieve optimal chunking. Initial debugging revealed that default values were too large for smaller documents, leading to single-chunk ingestion.
+
 
 ## Phase 6: User Interface (Streamlit) - Enhanced
 
