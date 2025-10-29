@@ -296,7 +296,7 @@ def ingest_document(file_path: str, doc_id: str, chroma_client: Union[chromadb.C
                 doc = nlp(chunk_text)
                 entities = [{"text": ent.text, "label": ent.label_} for ent in doc.ents]
                 if entities:
-                    metadata["entities"] = entities
+                    metadata["entities"] = json.dumps(entities) # Serialize to JSON string
                     logging.debug(f"[{ingest_run_id}] Extracted entities for chunk {chunk_hash}: {entities}")
 
             all_chunk_metadatas.append(metadata)
