@@ -9,6 +9,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
 
+import spacy # Added for NER
+
 import backoff
 import chromadb
 import numpy as np
@@ -41,6 +43,20 @@ CHUNK_SIZE_TOKENS = 200 # Keep these as constants
 CHUNK_OVERLAP_TOKENS = 30
 CHUNK_SIZE_CHARS = 2800
 CHUNK_OVERLAP_CHARS = 480
+
+# Add spaCy NLP model initialization
+_nlp_model = None
+
+def _get_nlp_model():
+    global _nlp_model
+    if _nlp_model is None:
+        try:
+            _nlp_model = spacy.load("en_core_web_sm")
+            logging.info("spaCy 'en_core_web_sm' model loaded successfully.")
+        except OSError:
+            logging.error("spaCy 'en_core_web_sm' model not found. Please run 'python -m spacy download en_core_web_sm'")
+            _nlp_model = None # Ensure it's None if loading fails
+    return _nlp_model
 
 def _get_embedding_model_and_tokenizer():
     global _current_embed_model_name
@@ -243,7 +259,12 @@ def ingest_document(file_path: str, doc_id: str, chroma_client: Union[chromadb.C
         chunks = _chunk_text(text)
         logging.info(f"Document {doc_id} split into {len(chunks)} chunks.")
 
-        # 3. & 4. Process chunks in batches (Hashing, Caching, Embedding)
+        # Load NLP model for NER
+        nlp = _get_nlp_model()
+        if nlp is None:
+            logging.warning(f"[{ingest_run_id}] spaCy NLP model not loaded, skipping NER for doc_id: {doc_id}")
+
+        # 3. & 4. Process chunks in batches (Hashing, Caching, Embedding, and NER)
         chunks_to_embed_texts = []
         chunks_to_embed_metadata = []
         
@@ -269,6 +290,15 @@ def ingest_document(file_path: str, doc_id: str, chroma_client: Union[chromadb.C
                 "chunk_hash": chunk_hash,
                 "embed_model": current_embed_model_name
             }
+
+            # Perform NER if model is loaded
+            if nlp:
+                doc = nlp(chunk_text)
+                entities = [{"text": ent.text, "label": ent.label_} for ent in doc.ents]
+                if entities:
+                    metadata["entities"] = entities
+                    logging.debug(f"[{ingest_run_id}] Extracted entities for chunk {chunk_hash}: {entities}")
+
             all_chunk_metadatas.append(metadata)
 
             if cached_embedding is not None:
