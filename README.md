@@ -56,6 +56,8 @@ The project employs a robust versioning and release management strategy to ensur
 
 ## Notes for Future Developers (Human or AI)
 
+For detailed instructions on setting up, running, and testing the system, please refer to the [How to Run the CIVIX System Guide](docs/how-to/run_system.md).
+
 1.  **Development Environment:** Always use the virtual environment (`source venv/bin/activate`). All dependencies are listed in `requirements.txt`.
 
 2.  **CPU-First Installation (Torch):** This project is configured for CPU-first operation. To install PyTorch for CPU, use the following command:

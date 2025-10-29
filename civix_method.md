@@ -109,7 +109,8 @@ This section provides overarching guidelines and insights for maintaining and ev
     *   **Isolated Testing:** For stateful components like ChromaDB, ensure tests use isolated, temporary directories to prevent interference between test runs.
 *   **Communication & Collaboration:**
     *   **Log Everything:** Maintain detailed logs in the `docs/` directory for all significant activities, including investigations, resolutions, and decisions.
-    *   **README as a Living Document:** Keep `README.md` updated with the latest project status, setup instructions, and key operational details.
+    *   **Documentation Structure:** The `docs/` directory is organized into subdirectories (`plans/`, `logs/`, `how-to/`) for clarity and easy navigation. Refer to `docs/how-to/run_system.md` for detailed instructions on running and testing the system.
+*   **README as a Living Document:** Keep `README.md` updated with the latest project status, setup instructions, and key operational details.
     *   **`civix_method.md` as the Guiding Principle:** Refer back to this document for core principles and methodologies.
 
 This section aims to provide a holistic view of the project's operational philosophy, ensuring that future development aligns with established best practices and maintains the system's robustness and maintainability.
