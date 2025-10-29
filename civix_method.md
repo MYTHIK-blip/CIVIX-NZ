@@ -53,6 +53,18 @@ This document outlines the core principles, infrastructure design, development m
     *   **Timestamping:** All log entries and significant documentation updates are timestamped for clear historical tracking.
     *   **Formatting Cadence:** Consistent Markdown formatting is maintained across all documentation.
     *   **GitHub Cadence:** Documentation updates are committed and pushed regularly, aligning with code changes, ensuring compatibility with GitHub's rendering (e.g., fencing for code blocks, Mermaid diagrams where applicable).
+*   **Running Services:** For development and testing, core services like the FastAPI backend and Ollama server often need to be run in separate terminal tabs.
+    *   **FastAPI Server:** To start the FastAPI server, navigate to the project root, activate the virtual environment, and run:
+        ```bash
+        source .venv/bin/activate
+        uvicorn ingestion_service:app --host 0.0.0.0 --port 8000
+        ```
+        If tracing is enabled, ensure the `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable is set before running the server.
+    *   **Ollama Server:** To start the Ollama server and pull a model (e.g., `mistral`), run:
+        ```bash
+        ollama run mistral
+        ```
+        (Ensure Ollama is installed and running in the background.)
 
 ## 5. GitHub and Versioning
 
@@ -74,3 +86,28 @@ This document outlines the core principles, infrastructure design, development m
 *   **User Control:** Confirm significant actions or ambiguous requests with the user.
 
 ---
+
+## 7. Global Cadence, Future-Proofing, and Insights
+
+This section provides overarching guidelines and insights for maintaining and evolving the CIVIX project.
+
+*   **Continuous Integration/Continuous Deployment (CI/CD) Philosophy:** While not fully automated yet, the development cadence is geared towards a CI/CD pipeline. This means:
+    *   **Small, frequent commits:** Each commit should be a self-contained, testable unit of work.
+    *   **Automated testing:** The `pytest` suite is the first line of defense. All new features and bug fixes must be accompanied by relevant tests.
+    *   **Clear documentation:** Every change, issue, and resolution is logged and timestamped, ensuring a comprehensive project history.
+*   **Dependency Management:**
+    *   **Strict `requirements.txt`:** All Python dependencies are explicitly listed. Avoid adding new, heavy dependencies without careful consideration and justification.
+    *   **CPU-First by Default:** The project prioritizes CPU-compatible solutions. If GPU acceleration is required, ensure it's an optional configuration.
+    *   **Local Model Management:** For models like `sentence-transformers`, prefer local storage (`./models/`) and environment variable configuration (`EMBED_MODEL`) to ensure consistent and network-independent test execution.
+*   **Observability as a First-Class Citizen:**
+    *   **Structured Logging:** All components should use the centralized JSON logging.
+    *   **Metrics & Tracing:** Leverage Prometheus metrics and OpenTelemetry tracing for deep insights into system performance and behavior. Ensure these are configured and accessible during development and in production.
+*   **Test Environment Consistency:**
+    *   **Virtual Environment:** Always use the project's virtual environment (`.venv`).
+    *   **Isolated Testing:** For stateful components like ChromaDB, ensure tests use isolated, temporary directories to prevent interference between test runs.
+*   **Communication & Collaboration:**
+    *   **Log Everything:** Maintain detailed logs in the `docs/` directory for all significant activities, including investigations, resolutions, and decisions.
+    *   **README as a Living Document:** Keep `README.md` updated with the latest project status, setup instructions, and key operational details.
+    *   **`civix_method.md` as the Guiding Principle:** Refer back to this document for core principles and methodologies.
+
+This section aims to provide a holistic view of the project's operational philosophy, ensuring that future development aligns with established best practices and maintains the system's robustness and maintainability.
