@@ -74,7 +74,9 @@ This document outlines the core principles, infrastructure design, development m
     *   **Format:** `emoji type(scope): message`
     *   **Example:** `✨ feat: Implemented Phase 10: System Evaluation and Benchmarking`
     *   **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
-*   **Tagging:** Use lightweight tags (e.g., `v0.1.0-phase8-complete`) to mark significant milestones or release points for easy rollback and version tracking.
+*   **Tagging:** Use lightweight tags (e.g., `v0.1.0-phase8-complete`, `v0.1.0-release-YYYY-MM-DD`) to mark significant milestones or release points for easy rollback and version tracking.
+*   **Release Branches:** For major milestones or production-ready states, a dedicated `release-YYYY-MM-DD` branch is created from `main`. These branches are considered "frozen" and serve as stable points for potential rollbacks, asset management, and long-term version tracking.
+*   **Git LFS:** Large files, such as model checkpoints (`.safetensors`), are managed using Git Large File Storage (LFS) to maintain repository performance and integrity.
 *   **`.gitignore`:** Carefully configured to exclude generated files, environment specifics, and sensitive data.
 
 ## 6. Constraints & Guardrails

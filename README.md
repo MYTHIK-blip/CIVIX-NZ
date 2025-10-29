@@ -42,6 +42,18 @@ The project currently has a fully functional and robust document ingestion pipel
 *   **Persistence:** The system uses a persistent, on-disk ChromaDB instance for the main application.
 *   **Testing:** A comprehensive `pytest` suite is in place, ensuring the reliability of the ingestion, retrieval, and generation processes.
 
+## Versioning and Release Management
+
+The project follows a clear versioning strategy, utilizing release branches and tags for stability and traceability.
+
+## Versioning and Release Management
+
+The project employs a robust versioning and release management strategy to ensure stability, traceability, and ease of rollback.
+
+*   **Release Branches:** For significant milestones or production-ready states, a dedicated `release-YYYY-MM-DD` branch is created from `main`. These branches serve as frozen points for stability.
+*   **Tagging:** Lightweight tags (e.g., `v0.1.0-release-YYYY-MM-DD`) are applied to release branches to mark specific versions, facilitating easy identification and rollback.
+*   **Git LFS:** Large files, such as model checkpoints (`.safetensors`), are managed using Git Large File Storage (LFS) to maintain repository performance and integrity.
+
 ## Notes for Future Developers (Human or AI)
 
 1.  **Development Environment:** Always use the virtual environment (`source venv/bin/activate`). All dependencies are listed in `requirements.txt`.
