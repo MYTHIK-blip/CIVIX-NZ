@@ -33,7 +33,8 @@ The project currently has a fully functional and robust document ingestion pipel
 *   **API:** A FastAPI service (`ingestion_service.py`) with an `/ingest` endpoint for document uploads and a `/query` endpoint for retrieving relevant document chunks and generating answers.
 *   **Document Processing:** Support for PDF, DOCX, and TXT file formats.
 *   **Vectorization:** A sophisticated pipeline (`src/ingestion/processor.py`) that chunks text, generates embeddings using `sentence-transformers`, and upserts them into a ChromaDB vector store, storing the document text itself.
-*   **Retrieval:** A dedicated module (`src/retrieval/retriever.py`) that embeds user queries, performs initial retrieval, and applies re-ranking for enhanced relevance.
+*   **Advanced Retrieval:** A dedicated module (`src/retrieval/retriever.py`) that embeds user queries, performs initial retrieval, and applies re-ranking for enhanced relevance.
+*   **Legal Entity Recognition (NER):** Extracts key legal entities (e.g., organizations, regulations, dates) from ingested documents, stored as metadata for enhanced search and analysis.
 *   **Generation:** A dedicated module (`src/generation/generator.py`) that interacts with a local Ollama server (e.g., `mistral`) to construct RAG-specific prompts and generate answers based on retrieved context.
 *   **User Interface:** A Streamlit application (`ui.py`) providing document upload, query history, configurable retrieval parameters, and enhanced display of retrieved content.
 *   **Observability:** Structured JSON logging, Prometheus metrics, and OpenTelemetry distributed tracing for comprehensive system monitoring.
