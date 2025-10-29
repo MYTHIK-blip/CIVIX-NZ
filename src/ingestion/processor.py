@@ -33,22 +33,44 @@ INGESTION_MANIFEST_PATH = Path(os.getenv("INGESTION_MANIFEST_PATH", "./data/inge
 COLLECTION_NAME = "compliance_chunks"
 
 # --- Initialize Components ---
-try:
-    embedding_model = SentenceTransformer(EMBED_MODEL, device=DEVICE)
-    # Using a tokenizer from the same model for chunking calculations
-    from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained(EMBED_MODEL)
-    CHUNK_SIZE_TOKENS = 700
-    CHUNK_OVERLAP_TOKENS = 120
-    logging.info(f"Using token-based chunking with chunk size {CHUNK_SIZE_TOKENS} and overlap {CHUNK_OVERLAP_TOKENS}.")
-    token_based_chunking = True
-except (ImportError, OSError):
-    logging.warning("Transformers library not found or model data missing. Falling back to character-based chunking.")
-    CHUNK_SIZE_CHARS = 2800  # Approx. 700 tokens * 4 chars/token
-    CHUNK_OVERLAP_CHARS = 480   # Approx. 120 tokens * 4 chars/token
-    logging.info(f"Using character-based chunking with chunk size {CHUNK_SIZE_CHARS} and overlap {CHUNK_OVERLAP_CHARS}.")
-    token_based_chunking = False
-    tokenizer = None
+_current_embed_model_name = None
+_embedding_model_instance = None
+_tokenizer_instance = None
+token_based_chunking = False # Global flag, managed by _get_embedding_model_and_tokenizer
+CHUNK_SIZE_TOKENS = 200 # Keep these as constants
+CHUNK_OVERLAP_TOKENS = 30
+CHUNK_SIZE_CHARS = 2800
+CHUNK_OVERLAP_CHARS = 480
+
+def _get_embedding_model_and_tokenizer():
+    global _current_embed_model_name
+    global _embedding_model_instance
+    global _tokenizer_instance
+    global token_based_chunking
+
+    current_env_embed_model = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
+
+    if _embedding_model_instance is None or _current_embed_model_name != current_env_embed_model:
+        logging.info(f"Loading/reloading embedding model: {current_env_embed_model}")
+        try:
+            _embedding_model_instance = SentenceTransformer(current_env_embed_model, device=DEVICE)
+            _current_embed_model_name = current_env_embed_model
+
+            # Re-initialize tokenizer if model changes
+            from transformers import AutoTokenizer
+            _tokenizer_instance = AutoTokenizer.from_pretrained(current_env_embed_model)
+            token_based_chunking = True
+            logging.info(f"Using token-based chunking with chunk size {CHUNK_SIZE_TOKENS} and overlap {CHUNK_OVERLAP_TOKENS}.")
+
+        except (ImportError, OSError) as e:
+            logging.warning(f"Transformers library not found or model data missing for {current_env_embed_model}. Falling back to character-based chunking. Error: {e}")
+            # Unset embedding model instance to ensure it's retried if the env var changes.
+            _embedding_model_instance = None
+            _current_embed_model_name = None
+            _tokenizer_instance = None
+            token_based_chunking = False
+            logging.info(f"Using character-based chunking with chunk size {CHUNK_SIZE_CHARS} and overlap {CHUNK_OVERLAP_CHARS}.")
+    return _embedding_model_instance, _tokenizer_instance
 
 
 # --- Helper Functions ---
@@ -72,7 +94,13 @@ def _parse_document(file_path: str) -> str:
 
 def _chunk_text(text: str) -> List[Tuple[str, int, int]]:
     """Chunks text by tokens (if available) or characters."""
-    if not token_based_chunking or not tokenizer:
+    # Ensure models are loaded/initialized before checking token_based_chunking
+    _, _ = _get_embedding_model_and_tokenizer() # Call to ensure globals are updated
+
+    global token_based_chunking
+    global _tokenizer_instance # Use global tokenizer
+
+    if not token_based_chunking or _tokenizer_instance is None: # Check _tokenizer_instance
         # Character-based fallback
         chunks = []
         for i in range(0, len(text), CHUNK_SIZE_CHARS - CHUNK_OVERLAP_CHARS):
@@ -82,17 +110,17 @@ def _chunk_text(text: str) -> List[Tuple[str, int, int]]:
         return chunks
 
     # Token-based chunking
-    tokens = tokenizer.encode(text, add_special_tokens=False)
+    tokens = _tokenizer_instance.encode(text, add_special_tokens=False) # Use _tokenizer_instance
     chunks = []
     for i in range(0, len(tokens), CHUNK_SIZE_TOKENS - CHUNK_OVERLAP_TOKENS):
         token_chunk = tokens[i:i + CHUNK_SIZE_TOKENS]
-        chunk_text = tokenizer.decode(token_chunk, skip_special_tokens=True)
+        chunk_text = _tokenizer_instance.decode(token_chunk, skip_special_tokens=True) 
         
         # This is an approximation of start/end char positions
         # A more robust solution might involve mapping tokens back to char indices
         start = text.find(chunk_text)
         if start == -1:
-            # Fallback if decoded text isn't found directly (e.g. due to normalization)
+            # Fallback if decoded text's isn't found directly (e.g. due to normalization)
             # This is a rough estimate.
             char_pos_est = int((i / len(tokens)) * len(text)) if len(tokens) > 0 else 0
             start = char_pos_est
@@ -102,10 +130,10 @@ def _chunk_text(text: str) -> List[Tuple[str, int, int]]:
     return chunks
 
 
-def _get_chunk_hash(doc_id: str, chunk: str, start: int, end: int) -> str:
-    """Computes a SHA256 hash for a chunk."""
+def _get_chunk_hash(doc_id: str, chunk: str, start: int, end: int, embed_model_name: str) -> str:
+    """Computes a SHA256 hash for a chunk, including embedding model name."""
     first_64_chars = chunk[:64]
-    hash_input = f"{doc_id}:{start}:{end}:{first_64_chars}"
+    hash_input = f"{doc_id}:{start}:{end}:{first_64_chars}:{embed_model_name}"
     return hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
 
 def _get_cached_embedding(chunk_hash: str) -> np.ndarray | None:
@@ -127,12 +155,19 @@ def _embed_batch(batch_texts: List[str]) -> List[np.ndarray]:
     """Embeds a batch of texts with retry logic."""
     start_time = time.time()
     with tracer.start_as_current_span("embed_batch") as span:
-        span.set_attribute("embedding.model_name", EMBED_MODEL)
+        embedding_model_instance, _ = _get_embedding_model_and_tokenizer() # Get current model
+        if embedding_model_instance is None:
+            raise RuntimeError("Embedding model could not be loaded.")
+        
+        current_embed_model_name = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2") # Get current model name
+        span.set_attribute("embedding.model_name", current_embed_model_name) # Use the current model name
         span.set_attribute("embedding.batch_size", len(batch_texts))
-        logging.info(f"Embedding batch of size {len(batch_texts)}...", extra={"model_name": EMBED_MODEL, "batch_size": len(batch_texts)})
-        embeddings = embedding_model.encode(batch_texts, convert_to_numpy=True)
+        logging.info(f"Embedding batch of size {len(batch_texts)}...", extra={"model_name": current_embed_model_name, "batch_size": len(batch_texts)})
+        
+        embeddings = embedding_model_instance.encode(batch_texts, convert_to_numpy=True)
+        
         duration = time.time() - start_time
-        EMBEDDING_DURATION_SECONDS.labels(model_name=EMBED_MODEL, batch_size=len(batch_texts)).observe(duration)
+        EMBEDDING_DURATION_SECONDS.labels(model_name=current_embed_model_name, batch_size=len(batch_texts)).observe(duration)
         span.set_attribute("embedding.duration_seconds", duration)
         return embeddings
 
@@ -217,9 +252,11 @@ def ingest_document(file_path: str, doc_id: str, chroma_client: Union[chromadb.C
         all_chunk_metadatas = []
         all_chunk_texts = []
 
+        current_embed_model_name = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
+
         for chunk_text, start_pos, end_pos in chunks:
             all_chunk_texts.append(chunk_text)
-            chunk_hash = _get_chunk_hash(doc_id, chunk_text, start_pos, end_pos)
+            chunk_hash = _get_chunk_hash(doc_id, chunk_text, start_pos, end_pos, current_embed_model_name)
             all_chunk_hashes.append(chunk_hash)
 
             cached_embedding = _get_cached_embedding(chunk_hash)
@@ -229,7 +266,8 @@ def ingest_document(file_path: str, doc_id: str, chroma_client: Union[chromadb.C
                 "file_path": file_path,
                 "start_char": start_pos,
                 "end_char": end_pos,
-                "chunk_hash": chunk_hash
+                "chunk_hash": chunk_hash,
+                "embed_model": current_embed_model_name
             }
             all_chunk_metadatas.append(metadata)
 

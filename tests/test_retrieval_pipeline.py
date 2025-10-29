@@ -110,7 +110,7 @@ def test_retrieval_with_reranking(setup_and_teardown_retrieval_test):
 
     # Verify that the most relevant document (doc3) is among the top re-ranked results
     # and ideally is the first one.
-    assert "Appeals for financial penalties" in results[0]["document"]
+    assert "appeals for financial penalties" in results[0]["document"].lower()
     assert results[0]["metadata"]["doc_id"] == "retrieval_test_doc3"
 
     # Also check that doc1, which mentions appeals, is also present if it's the second most relevant
